@@ -1,0 +1,14 @@
+# Terraform variable files with sensitive data
+terraform.tfvars
+*.tfvars
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Terraform lock file
+.terraform.lock.hcl
+
+# Terraform plan files
+*.tfplan
