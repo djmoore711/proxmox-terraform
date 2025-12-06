@@ -6,15 +6,15 @@ This Terraform configuration deploys a Docker-ready virtual machine on Proxmox V
 
 A single VM configured for running 5-10 Docker containers with the following specifications:
 
-- **VM ID**: 100
-- **Name**: vm-instance
-- **Target Node**: proxmox-02 (16GB RAM host)
-- **Source Template**: VM 9000 on proxmox-01
+- **VM ID**: 100 (configurable)
+- **Name**: vm-instance (configurable)
+- **Target Node**: Your chosen Proxmox node
+- **Source Template**: Your template VM ID (configurable)
 - **Resources**:
   - CPU: 2 cores, 1 socket
   - Memory: 4GB dedicated
-  - Disk: 60GB on local-lvm storage (scsi0 interface, raw format)
-  - Network: virtio on vmbr0 bridge
+  - Disk: 60GB on your storage (scsi0 interface, raw format)
+  - Network: virtio on vmbr0 bridge (configurable)
   - Cloud-Init: Debian user with DHCP networking
 
 ## 📋 Prerequisites
@@ -25,14 +25,14 @@ A single VM configured for running 5-10 Docker containers with the following spe
    - `VM.Clone`, `VM.Config.Disk`, `VM.Config.CPU`, `VM.Config.Memory`
    - `VM.Config.Network`, `VM.Config.Options`
    - `Datastore.Audit`, `Pool.Allocate`
-4. **Template VM** (ID: 9000) on proxmox-01 with Cloud-Init configured
+4. **Template VM** with Cloud-Init configured (ID configurable)
 5. **GitHub CLI** (optional, for repo management)
 
 ## 🛠️ Setup
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/djmoore711/proxmox-terraform.git
+git clone <your-repo-url>
 cd proxmox-terraform
 ```
 
@@ -50,9 +50,9 @@ proxmox_api_token_id     = "your-token-id"
 proxmox_api_token_secret = "your-token-secret"
 
 # Deployment configuration
-proxmox_host_node = "proxmox-02"  # Target node
-vm_id             = 100           # New VM ID
-template_vm_id    = 9000          # Source template ID
+proxmox_host_node = "your-target-node"  # Target node
+vm_id             = 100                 # New VM ID
+template_vm_id    = 900                # Source template ID
 vm_password       = "your-vm-password"
 storage_volume    = "local-lvm"
 ```
