@@ -7,8 +7,12 @@ terraform.tfvars
 *.tfstate.*
 .terraform/
 
-# Terraform lock file
-.terraform.lock.hcl
-
 # Terraform plan files
 *.tfplan
+
+# macOS junk
+.DS_Store
+
+# Editor settings
+.vscode/
+.idea/
