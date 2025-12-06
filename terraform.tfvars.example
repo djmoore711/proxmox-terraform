@@ -1,0 +1,10 @@
+# terraform.tfvars.example - Commit this to version control
+
+proxmox_api_url          = "https://proxmox-01.example.com:8006/api2/json"
+proxmox_api_token_id     = "terraform@pam!terraform"
+proxmox_api_token_secret = "REPLACE_WITH_ACTUAL_TOKEN"  # Never commit real values
+proxmox_host_node        = "proxmox-01"
+vm_id                    = "REPLACE_WITH_VM_ID"
+template_vm_id           = "REPLACE_WITH_TEMPLATE_ID"
+vm_password              = "REPLACE_WITH_SECURE_PASSWORD"
+storage_volume            = "local-lvm"
