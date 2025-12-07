@@ -57,6 +57,8 @@ vm_password       = "your-vm-password"
 storage_volume    = "local-lvm"
 ```
 
+> **💡 API Token Setup**: See the [Proxmox provider documentation](https://registry.terraform.io/providers/bpg/proxmox/latest/docs#api-token-authentication) for detailed instructions on creating and configuring your API token.
+
 ### 3. Initialize Terraform
 ```bash
 terraform init
