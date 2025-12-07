@@ -55,6 +55,17 @@ vm_id             = 100                 # New VM ID
 template_vm_id    = 900                # Source template ID
 vm_password       = "your-vm-password"
 storage_volume    = "local-lvm"
+
+# VM configuration
+vm_name           = "prox-docker"
+
+# Tailscale configuration
+tailscale_auth_key = "your-tailscale-auth-key"
+tailscale_hostname = "prox-docker"
+tailscale_tags     = ["tag:homelab"]
+
+# Proxmox node for snippet storage
+proxmox_node      = "proxmox-01"
 ```
 
 ### 3. Initialize Terraform
@@ -72,6 +83,27 @@ terraform plan
 terraform apply
 ```
 
+### 6. Cloud-Init Bootstrap (Tailscale + Portainer)
+On first boot, the VM automatically:
+
+- **Installs Docker CE** from the official Docker repository
+- **Installs and joins Tailscale** using the provided auth key
+- **Deploys Portainer** as a Docker container on ports 8000 and 9443
+
+The bootstrap process is handled by a cloud-init snippet that is:
+1. Rendered using Terraform's `templatefile()` function
+2. Uploaded to the Proxmox node's snippets directory via SCP
+3. Referenced in the VM's cloud-init configuration
+
+**Accessing Portainer:**
+- Once the VM boots and Portainer starts, access it at:
+  - `https://<tailscale-ip>:9443` (HTTPS, recommended)
+  - `http://<tailscale-ip>:8000` (HTTP, legacy)
+
+**Tailscale Configuration:**
+- The VM automatically joins your Tailscale network with the specified hostname and tags
+- Use Tailscale ACLs to control access to the node and Portainer
+
 ## 📁 File Structure
 
 ```
@@ -83,7 +115,9 @@ proxmox-terraform/
 ├── provider.tf                  # Provider configuration
 ├── variables.tf                 # Variable definitions
 ├── outputs.tf                   # Output values
-└── terraform.tfvars.example     # Template for user configuration
+├── terraform.tfvars.example     # Template for user configuration
+└── templates/
+    └── cloud-init-bootstrap.yaml.tftpl  # Cloud-init bootstrap template
 ```
 
 ### File Descriptions
@@ -98,15 +132,26 @@ proxmox-terraform/
 - Clones from template VM 9000 on proxmox-01
 - Deploys to proxmox-02 with specified resources
 - Configures Cloud-Init for Debian user and DHCP networking
+- Renders cloud-init bootstrap template using `templatefile()`
+- Uploads cloud-init snippet to Proxmox node via SCP
+- Automatically installs Docker CE, Tailscale, and Portainer on first boot
 
 #### `variables.tf`
 - Declares all input variables with types and descriptions
 - Sets sensible defaults where appropriate
-- Marks sensitive values (`api_token_secret`, `vm_password`)
+- Marks sensitive values (`api_token_secret`, `vm_password`, `tailscale_auth_key`)
+- Includes new variables for VM naming and Tailscale configuration
 
 #### `outputs.tf`
 - Exports VM ID and name for reference
 - Useful for automation and integration
+
+#### `templates/cloud-init-bootstrap.yaml.tftpl`
+- Cloud-init template for first-boot bootstrap
+- Installs Docker CE from official repository
+- Installs Tailscale and joins the specified tailnet
+- Deploys Portainer as a Docker container
+- Uses Terraform variables for dynamic configuration
 
 #### `.gitignore`
 - Protects sensitive files:
@@ -136,6 +181,12 @@ proxmox-terraform/
 - **Retries**: 1 (configurable via timeout_clone)
 
 ## 🔒 Security Considerations
+
+### ⚠️ CRITICAL: Never Commit terraform.tfvars
+- `terraform.tfvars` contains sensitive secrets (API token, VM password, Tailscale auth key)
+- **Never commit this file to version control**
+- Use `terraform.tfvars.example` as the template and keep real values local-only
+- If you have accidentally committed secrets, **rotate them immediately**
 
 ### API Token
 - Create a dedicated API token for Terraform

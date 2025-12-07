@@ -45,3 +45,45 @@ variable "storage_volume" {
   type        = string
   default     = "local-lvm"
 }
+
+variable "vm_name" {
+  description = "Name of the VM instance"
+  type        = string
+  default     = "docker-node-01"
+}
+
+variable "tailscale_auth_key" {
+  description = "Tailscale authentication key"
+  type        = string
+  sensitive   = true
+}
+
+variable "tailscale_hostname" {
+  description = "Hostname for the Tailscale node"
+  type        = string
+  default     = "docker-node-01"
+}
+
+variable "tailscale_tags" {
+  description = "List of Tailscale tags for ACLs"
+  type        = list(string)
+  default     = ["tag:homelab"]
+}
+
+variable "proxmox_node" {
+  description = "Proxmox node name for snippet storage"
+  type        = string
+  default     = "proxmox-01"
+}
+
+variable "template_source_node" {
+  description = "Proxmox node where the template VM resides"
+  type        = string
+  default     = "proxmox-01"
+}
+
+variable "snippet_storage" {
+  description = "Storage ID for cloud-init snippets (e.g., 'local', 'local-lvm')"
+  type        = string
+  default     = "local"
+}

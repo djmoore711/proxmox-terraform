@@ -1,0 +1,64 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+users:
+  - name: debian
+    plain_text_passwd: "${vm_password}"
+    lock_passwd: false
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [sudo]
+    shell: /bin/bash
+
+packages:
+  - curl
+  - gnupg
+  - lsb-release
+
+write_files:
+  - path: /usr/local/sbin/bootstrap-docker-node.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -eux
+
+      # Install Docker CE (official repo)
+      curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+      echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io
+
+      systemctl enable docker
+      systemctl start docker
+
+      # Install Tailscale
+      curl -fsSL https://tailscale.com/install.sh | sh
+
+      # Join Tailscale
+      TAGS="${tailscale_tags}"
+      if [ -n "$TAGS" ]; then
+        tailscale up \
+          --authkey="${tailscale_auth_key}" \
+          --hostname="${tailscale_hostname}" \
+          --ssh \
+          --advertise-tags="$TAGS"
+      else
+        tailscale up \
+          --authkey="${tailscale_auth_key}" \
+          --hostname="${tailscale_hostname}" \
+          --ssh
+      fi
+
+      # Install and start Portainer
+      docker volume create portainer_data
+      docker run -d \
+        --name portainer \
+        --restart=always \
+        -p 8000:8000 \
+        -p 9443:9443 \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v portainer_data:/data \
+        portainer/portainer-ce:latest
+
+runcmd:
+  - [/usr/local/sbin/bootstrap-docker-node.sh]
