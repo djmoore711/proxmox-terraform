@@ -32,7 +32,7 @@ A single VM configured for running 5-10 Docker containers with the following spe
 
 ### 1. Clone the Repository
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/djmoore711/proxmox-terraform.git
 cd proxmox-terraform
 ```
 
