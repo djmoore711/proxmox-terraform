@@ -38,7 +38,7 @@ resource "proxmox_virtual_environment_vm" "vm-instance" {
   clone {
     vm_id     = var.template_vm_id
     full      = true
-    node_name = var.template_source_node
+    node_name = var.proxmox_host_node
   }
   
   cpu {
@@ -73,8 +73,17 @@ resource "proxmox_virtual_environment_vm" "vm-instance" {
         address = "dhcp"
       }
     }
-    user_data_file_id = "${var.snippet_storage}:snippets/cloud-init-${var.vm_id}.yaml"
+    user_data_file_id = "local:snippets/cloud-init-${var.vm_id}.yaml"
   }
 
-  depends_on = [null_resource.cloud_init_snippet]
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [
+      clone,
+      disk,
+      initialization,
+    ]
+  }
+
+  tags = ["terraform", "docker", "production"]
 }

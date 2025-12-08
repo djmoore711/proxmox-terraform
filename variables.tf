@@ -75,15 +75,3 @@ variable "proxmox_node" {
   type        = string
   default     = "proxmox-01"
 }
-
-variable "template_source_node" {
-  description = "Proxmox node where the template VM resides"
-  type        = string
-  default     = "proxmox-01"
-}
-
-variable "snippet_storage" {
-  description = "Storage ID for cloud-init snippets (e.g., 'local', 'local-lvm')"
-  type        = string
-  default     = "local"
-}

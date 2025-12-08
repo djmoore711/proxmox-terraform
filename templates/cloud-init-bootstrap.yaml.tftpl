@@ -14,51 +14,107 @@ packages:
   - curl
   - gnupg
   - lsb-release
+  - ca-certificates
 
 write_files:
   - path: /usr/local/sbin/bootstrap-docker-node.sh
     permissions: '0755'
     content: |
       #!/bin/bash
-      set -eux
+      set -euo pipefail
 
-      # Install Docker CE (official repo)
-      curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-      echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-      apt-get update
-      apt-get install -y docker-ce docker-ce-cli containerd.io
+      # Logging setup
+      LOG_FILE="/var/log/bootstrap.log"
+      exec > >(tee -a "$LOG_FILE") 2>&1
+      
+      echo "Starting bootstrap script at $(date)"
 
-      systemctl enable docker
-      systemctl start docker
+      # Error handling
+      trap 'echo "Error on line $LINENO. Exit code: $?"' ERR
 
-      # Install Tailscale
-      curl -fsSL https://tailscale.com/install.sh | sh
-
-      # Join Tailscale
-      TAGS="${tailscale_tags}"
-      if [ -n "$TAGS" ]; then
-        tailscale up \
-          --authkey="${tailscale_auth_key}" \
-          --hostname="${tailscale_hostname}" \
-          --ssh \
-          --advertise-tags="$TAGS"
+      # 1. Install Docker CE (idempotent)
+      if ! command -v docker &> /dev/null; then
+        echo "Installing Docker..."
+        curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        apt-get update
+        apt-get install -y docker-ce docker-ce-cli containerd.io
+        systemctl enable docker
+        systemctl start docker
       else
-        tailscale up \
-          --authkey="${tailscale_auth_key}" \
-          --hostname="${tailscale_hostname}" \
-          --ssh
+        echo "Docker already installed."
       fi
 
-      # Install and start Portainer
-      docker volume create portainer_data
-      docker run -d \
-        --name portainer \
-        --restart=always \
-        -p 8000:8000 \
-        -p 9443:9443 \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v portainer_data:/data \
-        portainer/portainer-ce:latest
+      # 2. Install Tailscale (idempotent)
+      if ! command -v tailscale &> /dev/null; then
+        echo "Installing Tailscale..."
+        curl -fsSL https://tailscale.com/install.sh | sh
+      else
+        echo "Tailscale already installed."
+      fi
+
+      # 3. Join Tailscale (idempotent)
+      if ! tailscale status &> /dev/null; then
+        echo "Joining Tailscale..."
+        TAGS="${tailscale_tags}"
+        if [ -n "$TAGS" ]; then
+          tailscale up \
+            --authkey="${tailscale_auth_key}" \
+            --hostname="${tailscale_hostname}" \
+            --ssh \
+            --advertise-tags="$TAGS"
+        else
+          tailscale up \
+            --authkey="${tailscale_auth_key}" \
+            --hostname="${tailscale_hostname}" \
+            --ssh
+        fi
+      else
+        echo "Tailscale already connected."
+      fi
+
+      # 4. Install/Start Portainer (idempotent)
+      # Check if volume exists
+      if ! docker volume inspect portainer_data &> /dev/null; then
+        docker volume create portainer_data
+      fi
+
+      # Check if container running or exists
+      if ! docker ps -a --format '{{.Names}}' | grep -q "^portainer$"; then
+        echo "Starting Portainer..."
+        docker run -d \
+          --name portainer \
+          --restart=always \
+          -p 8000:8000 \
+          -p 9443:9443 \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v portainer_data:/data \
+          portainer/portainer-ce:latest
+      else
+        echo "Portainer container already exists."
+        # Optional: Ensure it's running
+        docker start portainer
+      fi
+
+      # 5. Health Checks
+      echo "Running health checks..."
+      MAX_RETRIES=30
+      count=0
+      while [ $count -lt $MAX_RETRIES ]; do
+        if curl -k -f https://localhost:9443 &> /dev/null || curl -f http://localhost:8000 &> /dev/null; then
+          echo "Portainer is healthy and accessible."
+          break
+        fi
+        echo "Waiting for Portainer... ($count/$MAX_RETRIES)"
+        sleep 5
+        count=$((count+1))
+      done
+
+      if [ $count -eq $MAX_RETRIES ]; then
+        echo "WARNING: Portainer health check timed out."
+      fi
+
+      echo "Bootstrap finished successfully at $(date)"
 
 runcmd:
   - [/usr/local/sbin/bootstrap-docker-node.sh]

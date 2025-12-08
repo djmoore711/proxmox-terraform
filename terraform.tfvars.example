@@ -19,9 +19,3 @@ tailscale_tags           = ["tag:homelab"]
 
 # Proxmox node for snippet storage (must match storage accessible on this node)
 proxmox_node             = "proxmox-01"
-
-# Node where the template VM resides (can differ from proxmox_host_node)
-template_source_node      = "proxmox-01"
-
-# Storage ID for cloud-init snippets (e.g., 'local', 'local-lvm')
-snippet_storage           = "local"
