@@ -9,7 +9,7 @@ A single VM configured for running 5-10 Docker containers with the following spe
 - **VM ID**: 100 (configurable)
 - **Name**: vm-instance (configurable)
 - **Target Node**: Your chosen Proxmox node
-- **Source Template**: Your template VM ID (located on proxmox-02)
+- **Source Template**: Your template VM ID
 - **Resources**:
   - CPU: 2 cores, 1 socket
   - Memory: 4GB dedicated
@@ -26,7 +26,15 @@ A single VM configured for running 5-10 Docker containers with the following spe
    - `VM.Config.Network`, `VM.Config.Options`
    - `Datastore.Audit`, `Pool.Allocate`
 4. **Template VM** with Cloud-Init configured (ID configurable)
-5. **GitHub CLI** (optional, for repo management)
+5. **SSH access to the target Proxmox node** for snippet uploads
+
+   The `bpg/proxmox` provider uses SSH for certain operations (including uploading snippet files).
+   This repo is configured to use `ssh-agent` authentication.
+
+   - Ensure `ssh-add -L` shows a loaded key
+   - Ensure the target node SSH user (configured in `provider.tf`) accepts that key
+   - Note: SSH configuration in `~/.ssh/config` is not used by the provider
+6. **GitHub CLI** (optional, for repo management)
 
 ## 🛠️ Setup
 
@@ -58,6 +66,7 @@ storage_volume    = "local-lvm"
 
 # VM configuration
 vm_name           = "prox-docker"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
 
 # Tailscale configuration
 tailscale_auth_key = "your-tailscale-auth-key"
@@ -80,7 +89,16 @@ terraform plan
 terraform apply
 ```
 
-### 6. Cloud-Init Bootstrap (Tailscale + Portainer)
+### 6. Verify Services (Tailscale, Docker, Portainer)
+Run these on the VM:
+```bash
+tailscale status
+docker ps
+curl -kI https://localhost:9443 || curl -I http://localhost:8000
+tail -n 200 /var/log/bootstrap.log
+```
+
+### 7. Cloud-Init Bootstrap (Tailscale + Portainer)
 On first boot, the VM automatically:
 
 - **Installs Docker CE** from the official Docker repository
@@ -126,8 +144,7 @@ proxmox-terraform/
 
 #### `main.tf`
 - Defines the `proxmox_virtual_environment_vm` resource
-- Clones from template VM 9000 on proxmox-02
-- Deploys to proxmox-02 with specified resources
+- Clones from the configured `template_vm_id` on the configured `proxmox_host_node`
 - Configures Cloud-Init for Debian user and DHCP networking
 - Renders cloud-init bootstrap template using `templatefile()`
 - Uploads cloud-init snippet to Proxmox node via SCP
@@ -173,8 +190,8 @@ proxmox-terraform/
 
 ### Clone Settings
 - **Full clone**: Creates independent VM copy
-- **Source**: VM 9000 on proxmox-02
-- **Target**: proxmox-02
+- **Source**: `template_vm_id`
+- **Target**: `proxmox_host_node`
 - **Retries**: 1 (configurable via timeout_clone)
 
 ## 🔒 Security Considerations
