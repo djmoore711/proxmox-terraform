@@ -2,29 +2,21 @@
 locals {
   cloud_init_content = templatefile("${path.module}/templates/cloud-init-bootstrap.yaml.tftpl", {
     tailscale_auth_key = var.tailscale_auth_key
-    tailscale_hostname = var.tailscale_hostname
-    tailscale_tags     = join(",", var.tailscale_tags)
+    hostname           = var.tailscale_hostname
     vm_password        = var.vm_password
+    ssh_key            = chomp(file(pathexpand(var.ssh_public_key_path)))
   })
 }
 
 # Upload cloud-init snippet to Proxmox node
-resource "null_resource" "cloud_init_snippet" {
-  triggers = {
-    hash = sha1(local.cloud_init_content)
-  }
+resource "proxmox_virtual_environment_file" "cloud_init_snippet" {
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = var.proxmox_host_node
 
-  provisioner "local-exec" {
-    command = <<EOF
-      # Render the template to a temporary file
-      echo '${replace(local.cloud_init_content, "'", "'\"'\"'")}' > /tmp/cloud-init-${var.vm_id}.yaml
-      
-      # Upload to Proxmox node
-      scp -o StrictHostKeyChecking=no /tmp/cloud-init-${var.vm_id}.yaml root@${var.proxmox_node}:/var/lib/vz/snippets/cloud-init-${var.vm_id}.yaml
-      
-      # Clean up
-      rm /tmp/cloud-init-${var.vm_id}.yaml
-    EOF
+  source_raw {
+    data      = local.cloud_init_content
+    file_name = "cloud-init-${var.vm_id}.yaml"
   }
 }
 
@@ -34,56 +26,52 @@ resource "proxmox_virtual_environment_vm" "vm-instance" {
   name        = var.vm_name
   node_name   = var.proxmox_host_node
   description = "VM created by Terraform with Docker, Tailscale, and Portainer"
-  
+
   clone {
     vm_id     = var.template_vm_id
     full      = true
     node_name = var.proxmox_host_node
   }
-  
+
   cpu {
     cores   = 2
     sockets = 1
   }
-  
+
   memory {
     dedicated = 4096
   }
-  
+
   agent {
     enabled = true
   }
-  
+
   network_device {
     bridge   = "vmbr0"
     model    = "virtio"
     firewall = false
   }
-  
+
   disk {
     datastore_id = var.storage_volume
     interface    = "scsi0"
     file_format  = "raw"
     size         = 60
   }
-  
+
   initialization {
+    type = "nocloud"
     ip_config {
       ipv4 {
         address = "dhcp"
       }
     }
-    user_data_file_id = "local:snippets/cloud-init-${var.vm_id}.yaml"
+    user_data_file_id = proxmox_virtual_environment_file.cloud_init_snippet.id
   }
 
   lifecycle {
-    prevent_destroy = true
-    ignore_changes  = [
-      clone,
-      disk,
-      initialization,
+    ignore_changes = [
+      initialization[0].user_data_file_id,
     ]
   }
-
-  tags = ["terraform", "docker", "production"]
 }

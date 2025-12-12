@@ -1,7 +1,7 @@
 # variables.tf
 
 variable "proxmox_api_url" {
-  description = "The URL for the Proxmox API (e.g., https://192.168.1.100:8006/api2/json)"
+  description = "The endpoint for the Proxmox API (e.g., https://192.168.1.100:8006/)"
   type        = string
 }
 
@@ -13,7 +13,7 @@ variable "proxmox_api_token_id" {
 variable "proxmox_api_token_secret" {
   description = "The Secret UUID for the API Token"
   type        = string
-  sensitive   = true 
+  sensitive   = true
 }
 
 variable "proxmox_host_node" {
@@ -38,6 +38,12 @@ variable "vm_password" {
   description = "Password for VM cloud-init user"
   type        = string
   sensitive   = true
+}
+
+variable "ssh_public_key_path" {
+  description = "Path to SSH public key for VM access"
+  type        = string
+  default     = "~/.ssh/id_ed25519.pub"
 }
 
 variable "storage_volume" {
@@ -67,11 +73,5 @@ variable "tailscale_hostname" {
 variable "tailscale_tags" {
   description = "List of Tailscale tags for ACLs"
   type        = list(string)
-  default     = ["tag:homelab"]
-}
-
-variable "proxmox_node" {
-  description = "Proxmox node name for snippet storage"
-  type        = string
-  default     = "proxmox-01"
+  default     = []
 }

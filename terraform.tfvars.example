@@ -1,11 +1,11 @@
 # terraform.tfvars.example - Commit this to version control
 
-proxmox_api_url          = "https://proxmox-01.example.com:8006/api2/json"
+proxmox_api_url          = "https://proxmox-01.example.com:8006/"
 proxmox_api_token_id     = "terraform@pam!terraform"
 proxmox_api_token_secret = "REPLACE_WITH_ACTUAL_TOKEN"  # Never commit real values
 proxmox_host_node        = "proxmox-01"
-vm_id                    = "REPLACE_WITH_VM_ID"
-template_vm_id           = "REPLACE_WITH_TEMPLATE_ID"
+vm_id                    = 100
+template_vm_id           = 9000
 vm_password              = "REPLACE_WITH_SECURE_PASSWORD"
 storage_volume           = "local-lvm"
 
@@ -16,6 +16,3 @@ vm_name                  = "prox-docker"
 tailscale_auth_key       = "REPLACE_WITH_TAILSCALE_AUTH_KEY"  # Never commit real values
 tailscale_hostname       = "prox-docker"
 tailscale_tags           = ["tag:homelab"]
-
-# Proxmox node for snippet storage (must match storage accessible on this node)
-proxmox_node             = "proxmox-01"

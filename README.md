@@ -9,7 +9,7 @@ A single VM configured for running 5-10 Docker containers with the following spe
 - **VM ID**: 100 (configurable)
 - **Name**: vm-instance (configurable)
 - **Target Node**: Your chosen Proxmox node
-- **Source Template**: Your template VM ID (configurable)
+- **Source Template**: Your template VM ID (located on proxmox-02)
 - **Resources**:
   - CPU: 2 cores, 1 socket
   - Memory: 4GB dedicated
@@ -63,9 +63,6 @@ vm_name           = "prox-docker"
 tailscale_auth_key = "your-tailscale-auth-key"
 tailscale_hostname = "prox-docker"
 tailscale_tags     = ["tag:homelab"]
-
-# Proxmox node for snippet storage
-proxmox_node      = "proxmox-01"
 ```
 
 ### 3. Initialize Terraform
@@ -129,7 +126,7 @@ proxmox-terraform/
 
 #### `main.tf`
 - Defines the `proxmox_virtual_environment_vm` resource
-- Clones from template VM 9000 on proxmox-01
+- Clones from template VM 9000 on proxmox-02
 - Deploys to proxmox-02 with specified resources
 - Configures Cloud-Init for Debian user and DHCP networking
 - Renders cloud-init bootstrap template using `templatefile()`
@@ -176,7 +173,7 @@ proxmox-terraform/
 
 ### Clone Settings
 - **Full clone**: Creates independent VM copy
-- **Source**: VM 9000 on proxmox-01
+- **Source**: VM 9000 on proxmox-02
 - **Target**: proxmox-02
 - **Retries**: 1 (configurable via timeout_clone)
 
@@ -219,7 +216,7 @@ lookup bpg-proxmox.crocodile-morray.ts.net: no such host
 ```
 unable to find configuration file for VM 9000 on node 'proxmox-02'
 ```
-- Verify template VM exists and is on proxmox-01
+- Verify template VM exists and is on proxmox-02
 - Check template VM ID matches `template_vm_id`
 
 **Permission Denied**
