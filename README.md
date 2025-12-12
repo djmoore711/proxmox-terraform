@@ -1,5 +1,13 @@
 # Proxmox Terraform Configuration
 
+![Hero banner](assets/hero_banner.png)
+
+![Terraform](https://img.shields.io/badge/Terraform-1.5%2B-7B42BC)
+![Provider](https://img.shields.io/badge/Provider-bpg%2Fproxmox-0A0A0A)
+![GitHub last commit](https://img.shields.io/github/last-commit/djmoore711/proxmox-terraform)
+![GitHub issues](https://img.shields.io/github/issues/djmoore711/proxmox-terraform)
+![GitHub Repo stars](https://img.shields.io/github/stars/djmoore711/proxmox-terraform)
+
 This Terraform configuration deploys a Docker-ready virtual machine on Proxmox VE using the modern `bpg/proxmox` provider.
 
 ## 🚀 What This Deploys
@@ -18,6 +26,12 @@ A single VM configured for running 5-10 Docker containers with the following spe
   - Cloud-Init: Debian user with DHCP networking
 
 ## 📋 Prerequisites
+
+> [!WARNING]
+> Never commit `terraform.tfvars`, any `*.tfstate*` files, or `.terraform/`.
+
+> [!TIP]
+> The `bpg/proxmox` provider uses SSH for snippet uploads. Ensure `ssh-add -L` shows a loaded key and that the target Proxmox node accepts it. The provider does not use `~/.ssh/config`.
 
 1. **Proxmox VE** installation with API access
 2. **Terraform** >= 1.5 installed locally
@@ -112,15 +126,14 @@ The bootstrap process is handled by a cloud-init snippet that is:
 2. Uploaded to the Proxmox node's snippets directory via SCP
 3. Referenced in the VM's cloud-init configuration
 
-**Accessing Portainer:**
-- Once the VM boots and Portainer starts, access it at:
-  - `https://<vm-ip-or-hostname>:9443` (HTTPS, recommended)
-  - `http://<vm-ip-or-hostname>:8000` (HTTP, legacy)
+**Service URLs (Portainer):**
 
-**Accessing Portainer over Tailscale (MagicDNS):**
-- If you have Tailscale MagicDNS enabled, you can typically use the node's MagicDNS name:
-  - `https://<magicdns-hostname>.<tailnet>.ts.net:9443`
-  - `http://<magicdns-hostname>.<tailnet>.ts.net:8000`
+| Service | LAN / local network | Tailscale MagicDNS[^magicdns] |
+|---|---|---|
+| Portainer (HTTPS, recommended) | `https://<vm-ip-or-hostname>:9443` | `https://<magicdns-hostname>.<tailnet>.ts.net:9443` |
+| Portainer (HTTP, legacy) | `http://<vm-ip-or-hostname>:8000` | `http://<magicdns-hostname>.<tailnet>.ts.net:8000` |
+
+[^magicdns]: Requires Tailscale MagicDNS to be enabled for your tailnet.
 
 **Tailscale Configuration:**
 - The VM automatically joins your Tailscale network with the specified hostname and tags
@@ -181,6 +194,9 @@ proxmox-terraform/
   - `.terraform/` (working directory)
 - Allows `.terraform.lock.hcl` for reproducible builds
 
+<details>
+<summary>Configuration Details</summary>
+
 ## 🔧 Configuration Details
 
 ### VM Specifications
@@ -201,7 +217,12 @@ proxmox-terraform/
 - **Target**: `proxmox_host_node`
 - **Retries**: 1 (configurable via timeout_clone)
 
+</details>
+
 ## 🔒 Security Considerations
+
+> [!WARNING]
+> The cloud-init user-data contains secrets (VM password and Tailscale auth key). Treat your local Terraform state as sensitive.
 
 ### ⚠️ CRITICAL: Never Commit terraform.tfvars
 - `terraform.tfvars` contains sensitive secrets (API token, VM password, Tailscale auth key)
@@ -225,22 +246,25 @@ proxmox-terraform/
 - `.gitignore` prevents accidental commits of secrets
 - Use environment variables or secret management tools for CI/CD
 
+<details>
+<summary>Troubleshooting</summary>
+
 ## 🚨 Troubleshooting
 
 ### Common Issues
 
 **DNS Resolution Error**
 ```
-lookup bpg-proxmox.crocodile-morray.ts.net: no such host
+lookup <proxmox-hostname>: no such host
 ```
 - Check `proxmox_api_url` in `terraform.tfvars`
 - Ensure hostname resolves from your machine
 
 **Template Not Found**
 ```
-unable to find configuration file for VM 9000 on node 'proxmox-02'
+unable to find configuration file for VM <template-vm-id> on node '<proxmox-node>'
 ```
-- Verify template VM exists and is on proxmox-02
+- Verify template VM exists and is on the configured `proxmox_host_node`
 - Check template VM ID matches `template_vm_id`
 
 **Permission Denied**
@@ -261,6 +285,11 @@ certificate is not trusted
 - Terraform state stored locally in `.terraform.tfstate`
 - For team use, configure remote state backend
 - Never commit state files to version control
+
+</details>
+
+<details>
+<summary>Updates and Modifications</summary>
 
 ## 🔄 Updates and Modifications
 
@@ -284,6 +313,8 @@ network_device {
   firewall = true/false
 }
 ```
+
+</details>
 
 ## 📚 References
 
