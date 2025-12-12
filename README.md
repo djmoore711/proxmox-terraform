@@ -112,8 +112,13 @@ The bootstrap process is handled by a cloud-init snippet that is:
 
 **Accessing Portainer:**
 - Once the VM boots and Portainer starts, access it at:
-  - `https://<tailscale-ip>:9443` (HTTPS, recommended)
-  - `http://<tailscale-ip>:8000` (HTTP, legacy)
+  - `https://<vm-ip-or-hostname>:9443` (HTTPS, recommended)
+  - `http://<vm-ip-or-hostname>:8000` (HTTP, legacy)
+
+**Accessing Portainer over Tailscale (MagicDNS):**
+- If you have Tailscale MagicDNS enabled, you can typically use the node's MagicDNS name:
+  - `https://<magicdns-hostname>.<tailnet>.ts.net:9443`
+  - `http://<magicdns-hostname>.<tailnet>.ts.net:8000`
 
 **Tailscale Configuration:**
 - The VM automatically joins your Tailscale network with the specified hostname and tags
