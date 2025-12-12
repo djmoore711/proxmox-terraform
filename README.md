@@ -9,7 +9,7 @@ A single VM configured for running 5-10 Docker containers with the following spe
 - **VM ID**: 100 (configurable)
 - **Name**: vm-instance (configurable)
 - **Target Node**: Your chosen Proxmox node
-- **Source Template**: Your template VM ID (configurable)
+- **Source Template**: Your template VM ID
 - **Resources**:
   - CPU: 2 cores, 1 socket
   - Memory: 4GB dedicated
@@ -26,7 +26,15 @@ A single VM configured for running 5-10 Docker containers with the following spe
    - `VM.Config.Network`, `VM.Config.Options`
    - `Datastore.Audit`, `Pool.Allocate`
 4. **Template VM** with Cloud-Init configured (ID configurable)
-5. **GitHub CLI** (optional, for repo management)
+5. **SSH access to the target Proxmox node** for snippet uploads
+
+   The `bpg/proxmox` provider uses SSH for certain operations (including uploading snippet files).
+   This repo is configured to use `ssh-agent` authentication.
+
+   - Ensure `ssh-add -L` shows a loaded key
+   - Ensure the target node SSH user (configured in `provider.tf`) accepts that key
+   - Note: SSH configuration in `~/.ssh/config` is not used by the provider
+6. **GitHub CLI** (optional, for repo management)
 
 ## 🛠️ Setup
 
@@ -55,6 +63,15 @@ vm_id             = 100                 # New VM ID
 template_vm_id    = 900                # Source template ID
 vm_password       = "your-vm-password"
 storage_volume    = "local-lvm"
+
+# VM configuration
+vm_name           = "prox-docker"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+
+# Tailscale configuration
+tailscale_auth_key = "your-tailscale-auth-key"
+tailscale_hostname = "prox-docker"
+tailscale_tags     = ["tag:homelab"]
 ```
 
 > **💡 API Token Setup**: See the [Proxmox provider documentation](https://registry.terraform.io/providers/bpg/proxmox/latest/docs#api-token-authentication) for detailed instructions on creating and configuring your API token.
@@ -74,6 +91,41 @@ terraform plan
 terraform apply
 ```
 
+### 6. Verify Services (Tailscale, Docker, Portainer)
+Run these on the VM:
+```bash
+tailscale status
+docker ps
+curl -kI https://localhost:9443 || curl -I http://localhost:8000
+tail -n 200 /var/log/bootstrap.log
+```
+
+### 7. Cloud-Init Bootstrap (Tailscale + Portainer)
+On first boot, the VM automatically:
+
+- **Installs Docker CE** from the official Docker repository
+- **Installs and joins Tailscale** using the provided auth key
+- **Deploys Portainer** as a Docker container on ports 8000 and 9443
+
+The bootstrap process is handled by a cloud-init snippet that is:
+1. Rendered using Terraform's `templatefile()` function
+2. Uploaded to the Proxmox node's snippets directory via SCP
+3. Referenced in the VM's cloud-init configuration
+
+**Accessing Portainer:**
+- Once the VM boots and Portainer starts, access it at:
+  - `https://<vm-ip-or-hostname>:9443` (HTTPS, recommended)
+  - `http://<vm-ip-or-hostname>:8000` (HTTP, legacy)
+
+**Accessing Portainer over Tailscale (MagicDNS):**
+- If you have Tailscale MagicDNS enabled, you can typically use the node's MagicDNS name:
+  - `https://<magicdns-hostname>.<tailnet>.ts.net:9443`
+  - `http://<magicdns-hostname>.<tailnet>.ts.net:8000`
+
+**Tailscale Configuration:**
+- The VM automatically joins your Tailscale network with the specified hostname and tags
+- Use Tailscale ACLs to control access to the node and Portainer
+
 ## 📁 File Structure
 
 ```
@@ -85,7 +137,9 @@ proxmox-terraform/
 ├── provider.tf                  # Provider configuration
 ├── variables.tf                 # Variable definitions
 ├── outputs.tf                   # Output values
-└── terraform.tfvars.example     # Template for user configuration
+├── terraform.tfvars.example     # Template for user configuration
+└── templates/
+    └── cloud-init-bootstrap.yaml.tftpl  # Cloud-init bootstrap template
 ```
 
 ### File Descriptions
@@ -97,18 +151,28 @@ proxmox-terraform/
 
 #### `main.tf`
 - Defines the `proxmox_virtual_environment_vm` resource
-- Clones from template VM 9000 on proxmox-01
-- Deploys to proxmox-02 with specified resources
+- Clones from the configured `template_vm_id` on the configured `proxmox_host_node`
 - Configures Cloud-Init for Debian user and DHCP networking
+- Renders cloud-init bootstrap template using `templatefile()`
+- Uploads cloud-init snippet to Proxmox node via SCP
+- Automatically installs Docker CE, Tailscale, and Portainer on first boot
 
 #### `variables.tf`
 - Declares all input variables with types and descriptions
 - Sets sensible defaults where appropriate
-- Marks sensitive values (`api_token_secret`, `vm_password`)
+- Marks sensitive values (`api_token_secret`, `vm_password`, `tailscale_auth_key`)
+- Includes new variables for VM naming and Tailscale configuration
 
 #### `outputs.tf`
 - Exports VM ID and name for reference
 - Useful for automation and integration
+
+#### `templates/cloud-init-bootstrap.yaml.tftpl`
+- Cloud-init template for first-boot bootstrap
+- Installs Docker CE from official repository
+- Installs Tailscale and joins the specified tailnet
+- Deploys Portainer as a Docker container
+- Uses Terraform variables for dynamic configuration
 
 #### `.gitignore`
 - Protects sensitive files:
@@ -133,11 +197,17 @@ proxmox-terraform/
 
 ### Clone Settings
 - **Full clone**: Creates independent VM copy
-- **Source**: VM 9000 on proxmox-01
-- **Target**: proxmox-02
+- **Source**: `template_vm_id`
+- **Target**: `proxmox_host_node`
 - **Retries**: 1 (configurable via timeout_clone)
 
 ## 🔒 Security Considerations
+
+### ⚠️ CRITICAL: Never Commit terraform.tfvars
+- `terraform.tfvars` contains sensitive secrets (API token, VM password, Tailscale auth key)
+- **Never commit this file to version control**
+- Use `terraform.tfvars.example` as the template and keep real values local-only
+- If you have accidentally committed secrets, **rotate them immediately**
 
 ### API Token
 - Create a dedicated API token for Terraform
@@ -170,7 +240,7 @@ lookup bpg-proxmox.crocodile-morray.ts.net: no such host
 ```
 unable to find configuration file for VM 9000 on node 'proxmox-02'
 ```
-- Verify template VM exists and is on proxmox-01
+- Verify template VM exists and is on proxmox-02
 - Check template VM ID matches `template_vm_id`
 
 **Permission Denied**
