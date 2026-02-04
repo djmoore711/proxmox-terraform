@@ -1,0 +1,23 @@
+#cloud-config
+ssh_pwauth: true
+package_update: true
+package_upgrade: true
+
+users:
+  - name: debian
+    lock_passwd: false
+    plain_text_passwd: "${vm_password}"
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    groups: [sudo]
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${ssh_key}
+
+packages:
+  - qemu-guest-agent
+  - curl
+  - git
+  - htop
+
+runcmd:
+  - systemctl enable --now qemu-guest-agent

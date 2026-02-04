@@ -16,5 +16,17 @@ provider "proxmox" {
   ssh {
     agent    = true
     username = "root"
+
+    # Force SSH to use MagicDNS for proxmox-02
+    node {
+      name    = "proxmox-02"
+      address = "proxmox-02.crocodile-morray.ts.net"
+    }
+
+    # Add proxmox-01 as well for future safety
+    node {
+      name    = "proxmox-01"
+      address = "proxmox-01.crocodile-morray.ts.net"
+    }
   }
 }

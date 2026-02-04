@@ -28,10 +28,41 @@ variable "template_vm_id" {
   default     = 9001
 }
 
-variable "vm_id" {
-  description = "Unique VM ID for the new VM (must be between 100-999999999)"
+variable "virtual_machines" {
+  description = "A map of virtual machines to create"
+  type = map(object({
+    vm_id              = number
+    vm_name            = string
+    cores              = optional(number, 2)
+    memory             = optional(number, 4096)
+    disk_size          = optional(number, 60)
+    tailscale_hostname = string
+    tailscale_tags     = optional(list(string), [])
+  }))
+  default = {}
+}
+
+variable "devbox_node" {
+  description = "Target node for DevBox"
+  type        = string
+  default     = "proxmox-02"
+}
+
+variable "devbox_vm_id" {
+  description = "VM ID for DevBox"
   type        = number
-  default     = 100
+}
+
+variable "devbox_vm_name" {
+  description = "Name of the DevBox VM"
+  type        = string
+  default     = "ai-devbox"
+}
+
+variable "debian_template_id" {
+  description = "ID of the Debian 12 Cloud-Init Template"
+  type        = number
+  default     = 9000
 }
 
 variable "vm_password" {
@@ -52,26 +83,8 @@ variable "storage_volume" {
   default     = "local-lvm"
 }
 
-variable "vm_name" {
-  description = "Name of the VM instance"
-  type        = string
-  default     = "docker-node-01"
-}
-
 variable "tailscale_auth_key" {
   description = "Tailscale authentication key"
   type        = string
   sensitive   = true
-}
-
-variable "tailscale_hostname" {
-  description = "Hostname for the Tailscale node"
-  type        = string
-  default     = "docker-node-01"
-}
-
-variable "tailscale_tags" {
-  description = "List of Tailscale tags for ACLs"
-  type        = list(string)
-  default     = []
 }
