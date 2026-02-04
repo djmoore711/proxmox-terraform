@@ -136,6 +136,17 @@ ssh {
 }
 ```
 
+## 🔄 Manual State Migration
+
+If you are transitioning from an older version of this repo where
+`proxmox_virtual_environment_vm.vm-instance` was a single resource, you can
+migrate your state manually to avoid recreation:
+
+```bash
+terraform state mv 'proxmox_virtual_environment_vm.vm-instance' 'proxmox_virtual_environment_vm.vm-instance["your-new-key"]'
+terraform state mv 'proxmox_virtual_environment_file.cloud_init_snippet' 'proxmox_virtual_environment_file.cloud_init_snippet["your-new-key"]'
+```
+
 ## 🤝 Contributing
 
 1. Fork the repository
