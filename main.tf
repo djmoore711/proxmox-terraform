@@ -72,13 +72,3 @@ resource "proxmox_virtual_environment_vm" "vm-instance" {
     ]
   }
 }
-
-moved {
-  from = proxmox_virtual_environment_file.cloud_init_snippet
-  to   = proxmox_virtual_environment_file.cloud_init_snippet["prox-docker"]
-}
-
-moved {
-  from = proxmox_virtual_environment_vm.vm-instance
-  to   = proxmox_virtual_environment_vm.vm-instance["prox-docker"]
-}
