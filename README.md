@@ -26,13 +26,17 @@ containers with:
 
 ### 2. AI DevBox (`devbox.tf`)
 
-A specialized development environment optimized for AI workloads:
+A specialized development environment optimized for AI and agentic workloads (VM
+ID: 105):
 
 - **Node**: `proxmox-02`
-- **Resources**: 6GB RAM, 50GB SSD (local-lvm).
+- **Resources**: 6GB RAM, 50GB SSD (local-lvm), 2 CPU Cores (host type).
 - **OS**: Debian 12 (Template-based).
-- **Environment**: Clean Debian install with `qemu-guest-agent`, `git`, and
-  `htop`.
+- **Environment**:
+  - Hardened production-grade Docker CE installation.
+  - Node.js 22 (LTS) pre-installed.
+  - Automated Tailscale connectivity with MagicDNS support.
+  - Essential build tools (`build-essential`, `python3-venv`, `git`).
 
 ## 📋 Prerequisites
 
@@ -112,12 +116,12 @@ terraform apply
 proxmox-terraform/
 ├── main.tf                      # Generic VM pool (for_each)
 ├── devbox.tf                    # Specialized AI DevBox resource
-├── provider.tf                  # Provider + Tailscale SSH mapping
+├── provider.tf                  # Provider + Tailscale SSH MagicDNS mapping
 ├── variables.tf                 # Var definitions (Multi-VM + DevBox)
 ├── outputs.tf                   # Merged VM maps (IDs and Names)
 ├── templates/
 │   ├── cloud-init-bootstrap.yaml.tftpl  # Docker + Tailscale stack
-│   └── cloud-init-devbox.yaml.tftpl     # Clean Dev environment
+│   └── cloud-init-devbox.yaml.tftpl     # Hardened Clean Dev environment
 └── terraform.tfvars.example     # Template for user configuration
 ```
 
@@ -125,7 +129,7 @@ proxmox-terraform/
 
 **"No Route to Host" (SSH)** If Terraform fails to upload cloud-init snippets
 while connected over Tailscale, ensure your nodes are mapped in the
-`provider.tf` SSH block:
+`provider.tf` SSH block to use their MagicDNS addresses:
 
 ```hcl
 ssh {
