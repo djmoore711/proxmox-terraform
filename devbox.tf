@@ -3,8 +3,10 @@
 # 1. Cloud-Init Template (Reuses existing ssh_key variable)
 locals {
   devbox_cloud_init = templatefile("${path.module}/templates/cloud-init-devbox.yaml.tftpl", {
-    vm_password = var.vm_password 
-    ssh_key     = chomp(file(pathexpand(var.ssh_public_key_path)))
+    vm_password        = var.vm_password 
+    ssh_key            = chomp(file(pathexpand(var.ssh_public_key_path)))
+    tailscale_auth_key = var.tailscale_auth_key
+    hostname           = var.devbox_vm_name
   })
 }
 
