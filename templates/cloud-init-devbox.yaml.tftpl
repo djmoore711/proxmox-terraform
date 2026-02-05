@@ -24,6 +24,7 @@ packages:
   - gnupg
   - lsb-release
   - ca-certificates
+  - jq
 
 write_files:
   - path: /usr/local/sbin/bootstrap-devbox.sh
@@ -67,13 +68,24 @@ write_files:
         echo "Docker already installed."
       fi
 
-      # 4. Install & Join Tailscale
+      # 4. Install Tailscale
       if ! command -v tailscale &> /dev/null; then
         echo "Installing Tailscale..."
         curl -fsSL https://tailscale.com/install.sh | sh
+      else
+        echo "Tailscale already installed."
+      fi
 
+      # 5. Join/Auth Tailscale
+      # Check actual connection state
+      TAILSCALE_STATE=$(tailscale status --json 2>/dev/null | jq -r '.BackendState' || echo "Unknown")
+      if [ "$TAILSCALE_STATE" != "Running" ]; then
         echo "Authenticating Tailscale..."
+        set +e
         tailscale up --authkey=${tailscale_auth_key} --hostname=${hostname} --ssh
+        set -e
+      else
+        echo "Tailscale already connected."
       fi
 
       echo "Bootstrap finished at $(date)"
